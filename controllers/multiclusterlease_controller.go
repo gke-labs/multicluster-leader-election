@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	v1alpha1 "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/api/v1alpha1"
-	"github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/pkg/leaderelection"
+	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
+	"github.com/gke-labs/multicluster-leader-election/pkg/leaderelection"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

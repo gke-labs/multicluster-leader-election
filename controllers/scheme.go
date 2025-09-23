@@ -19,8 +19,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 
-	v1alpha1 "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/api/v1alpha1"
-	corev1v1beta1 "github.com/GoogleCloudPlatform/k8s-config-connector/operator/pkg/apis/core/v1beta1"
+	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
 )
 
 func BuildScheme() *runtime.Scheme {
@@ -29,7 +28,6 @@ func BuildScheme() *runtime.Scheme {
 	schemeFuncs := []func(*runtime.Scheme) error{
 		clientgoscheme.AddToScheme,
 		v1alpha1.AddToScheme,
-		corev1v1beta1.AddToScheme,
 	}
 	for _, schemeFunc := range schemeFuncs {
 		if err := schemeFunc(scheme); err != nil {

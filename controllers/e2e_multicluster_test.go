@@ -32,8 +32,8 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/api/v1alpha1"
-	multiclusterleaselock "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/pkg/client"
+	"github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
+	multiclusterleaselock "github.com/gke-labs/multicluster-leader-election/pkg/client"
 )
 
 const (

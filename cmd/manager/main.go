@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"cloud.google.com/go/storage"
-	"github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/controllers"
+	"github.com/gke-labs/multicluster-leader-election/controllers"
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"

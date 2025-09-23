@@ -1,15 +1,11 @@
-module github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multicluster
+module github.com/gke-labs/multicluster-leader-election
 
 go 1.24.0
 
 toolchain go1.24.6
 
-replace github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease => ./
-
 require (
 	cloud.google.com/go/storage v1.50.0
-	github.com/GoogleCloudPlatform/k8s-config-connector v1.131.0
-	github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease v0.0.0-00010101000000-000000000000
 	github.com/go-logr/logr v1.4.2
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.0
@@ -40,6 +36,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
+	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
@@ -102,7 +99,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
-	sigs.k8s.io/kubebuilder-declarative-pattern v0.15.0-beta.2 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect

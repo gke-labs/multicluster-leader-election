@@ -1,5 +1,5 @@
 domain: multicluster.cloud.google.com
-repo: github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multicluster
+repo: github.com/gke-labs/multicluster-leader-election
 resources:
 - group: multicluster.core.cnrm.cloud.google.com
   kind: MultiClusterLease

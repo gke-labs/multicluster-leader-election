@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	v1alpha1 "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/api/v1alpha1"
+	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"

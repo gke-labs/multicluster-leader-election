@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	// Import the custom lock library
-	multiclusterleaselock "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/pkg/client"
+	multiclusterleaselock "github.com/gke-labs/multicluster-leader-election/pkg/client"
 )
 
 func main() {
@@ -68,4 +68,60 @@ func main() {
 }
 ```
 
+## Local End-to-End (E2E) Testing
 
+These instructions explain how to run the end-to-end tests locally. The tests use live Google Cloud Storage (GCS) as a backend for the resource lock and `kind` to create local Kubernetes clusters.
+
+### Prerequisites
+
+1.  **gcloud CLI**: Ensure you have the `gcloud` command-line tool installed and authenticated.
+2.  **A Google Cloud Project**: Have a GCP project where you can create service accounts and GCS buckets.
+3.  **kind**: Install `kind` to run local Kubernetes clusters.
+4.  **make**: The `make` command should be available in your shell.
+
+### Step 1: Configure GCP Service Account and GCS Bucket
+
+The E2E tests require a GCP Service Account with permissions to access a GCS bucket, which will be used for the leader election lock.
+
+First, set up your environment variables:
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+export SA_NAME="multiclusterlease-e2e-tester"
+export BUCKET_NAME="multiclusterlease-test-${PROJECT_ID}" # Or any other unique bucket name
+
+Now, run the following commands to create the bucket, the service account, grant permissions, and download the key.
+
+```bash
+# Create the GCS bucket (if it doesn't exist)
+gcloud storage buckets create gs://${BUCKET_NAME} --project=${PROJECT_ID}
+
+# Create the service account
+gcloud iam service-accounts create ${SA_NAME} \
+  --project=${PROJECT_ID} \
+  --display-name="MultiClusterLease E2E Tester"
+
+# Grant the service account permissions to manage objects in the bucket
+gcloud storage buckets add-iam-policy-binding gs://${BUCKET_NAME} \
+  --member="serviceAccount:${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
+
+# Download the service account key
+gcloud iam service-accounts keys create ./keyfile.json \
+  --iam-account=${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
+
+# Export the path to the key file for the tests
+export GCP_SA_KEY_PATH="$(pwd)/keyfile.json"
+```
+
+Important: The keyfile.json contains sensitive credentials. Ensure it is included in your .gitignore file and is never committed to your repository.
+
+### Step 2: Run the E2E tests
+
+```
+make test-e2e
+
+make test-e2e-multi
+```
+
+The test will verify leader election, lock renewal, and leadership failover scenarios.
