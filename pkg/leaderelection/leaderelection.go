@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	v1alpha1 "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/api/v1alpha1"
+	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
 	"google.golang.org/api/googleapi"
 	ctrl "sigs.k8s.io/controller-runtime"
 )

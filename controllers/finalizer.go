@@ -18,7 +18,7 @@ import (
 	"context"
 	"slices"
 
-	v1alpha1 "github.com/GoogleCloudPlatform/k8s-config-connector/experiments/multiclusterlease/api/v1alpha1"
+	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
 )
 
 const finalizerName = "multiclusterlease.core.cnrm.cloud.google.com/finalizer"
