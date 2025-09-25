@@ -15,11 +15,11 @@ endif
 all: manager
 
 # Run tests
-test: generate fmt vet manifests
+test: generate lint manifests
 	go test ./... -coverprofile cover.out
 
 # Build manager binary
-manager: generate fmt vet
+manager: generate lint
 	go build -o bin/manager cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -45,11 +45,18 @@ manifests: controller-gen
 
 # Run go fmt against code
 fmt:
-	go fmt ./...
+	go run mvdan.cc/gofumpt@v0.6.0 -l -w .
+
+# Run goimports against code
+imports:
+	go run golang.org/x/tools/cmd/goimports@v0.21.0 -l -w .
 
 # Run go vet against code
 vet:
 	go vet ./...
+
+# Lint runs all the linters
+lint: fmt imports vet
 
 # Generate code
 generate: controller-gen
