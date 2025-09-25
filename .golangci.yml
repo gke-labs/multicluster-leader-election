@@ -1,0 +1,42 @@
+run:
+  timeout: 5m
+
+linters-settings:
+  errcheck:
+    check-blank: true
+  goimports:
+    local-prefixes: github.com/gke-labs/multicluster-leader-election
+  govet:
+    check-shadowing: true
+  nolintlint:
+    allow-leading-space: true # don't require machine-readable nolint directives
+    allow-unused: false # report any unused nolint directives
+    require-explanation: false # don't require an explanation for nolint directives
+    require-specific: false # don't require specific nolint directives
+
+linters:
+  # please, do not use `enable-all`: it's deprecated and will be removed soon.
+  # try to use `disable-all` and `enable` instead.
+  # [enable-all is not recommended] https://golangci-lint.run/usage/configuration/#selecting-linters
+  disable-all: true
+  enable:
+    - errcheck
+    - gofmt
+    - goimports
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - whitespace
+
+issues:
+  # Excluding configuration per-path, per-linter, per-text
+  exclude-rules:
+    - path: controllers/finalizer.go
+      linters: [typecheck]
+    - path: controllers/multiclusterlease_controller.go
+      linters: [typecheck]
+    - path: controllers/scheme.go
+      linters: [typecheck]
