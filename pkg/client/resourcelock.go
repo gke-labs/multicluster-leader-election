@@ -110,7 +110,6 @@ func (mcl *MultiClusterLeaseLock) Create(ctx context.Context, ler resourcelock.L
 		}
 		return false, nil // Not the leader yet, or status is stale. Continue polling.
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to confirm leadership in status after create: %w", err)
 	}
@@ -163,7 +162,6 @@ func (mcl *MultiClusterLeaseLock) Update(ctx context.Context, ler resourcelock.L
 		}
 		return false, nil // Not the leader yet, or status is stale. Continue polling.
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to confirm leadership in status: %w", err)
 	}
