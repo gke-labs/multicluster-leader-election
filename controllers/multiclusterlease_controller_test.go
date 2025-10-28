@@ -36,15 +36,6 @@ import (
 // After the fix is applied, this test will FAIL because the panic is gone.
 // We will then update the test to assert that no panic occurs.
 func TestReconcile_PanicOnGCSAuthError(t *testing.T) {
-	// TDD Step 1: Write a test that fails (by panicking)
-	// We expect a panic, so we recover from it to make the test pass.
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("The code did not panic, but we expected it to. The bug might be fixed. Please update this test to assert for no panic.")
-		} else {
-			t.Log("Successfully caught expected panic.")
-		}
-	}()
 
 	// Arrange: Set up a scenario that will cause a panic
 	ctx := context.Background()
@@ -92,7 +83,6 @@ func TestReconcile_PanicOnGCSAuthError(t *testing.T) {
 		},
 	}
 
-	// Act: Call the Reconcile method. This should panic with the buggy code.
 	_, _ = reconciler.Reconcile(ctx, req)
 }
 
