@@ -112,14 +112,16 @@ func (r *MultiClusterLeaseReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	leaseInfo, err := leaderElector.AcquireOrRenew(ctx, &mcl, identity)
 	if err != nil {
 		log.Error(err, "failed to acquire or renew lease",
-			"candidate", identity,
-			"currentHolder", leaseInfo.HolderIdentity)
+			"candidate", identity)
 
 		// Update condition to indicate backend is unhealthy
 		r.setBackendHealthyCondition(&mcl, false, err)
 
-		// Update status
-		r.setMCLStatus(&mcl, leaseInfo)
+		// Update status if leaseInfo is not nil
+		if leaseInfo != nil {
+			r.setMCLStatus(&mcl, leaseInfo)
+		}
+
 		if updateErr := r.Status().Update(ctx, &mcl); updateErr != nil {
 			log.Error(updateErr, "failed to update status with backend error")
 			return ctrl.Result{}, updateErr
