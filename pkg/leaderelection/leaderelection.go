@@ -68,9 +68,18 @@ func (le *LeaderElector) AcquireOrRenew(ctx context.Context, lease *v1alpha1.Mul
 		return &LeaseInfo{Acquired: false}, fmt.Errorf("candidate has no renew time")
 	}
 
-	// TODO: Make the staleness check configurable
-	if time.Since(lease.Spec.RenewTime.Time) > 15*time.Second {
-		log.Info("candidate lease is stale")
+	var stalenessThreshold time.Duration
+	if lease.Spec.LeaseDurationSeconds != nil {
+		// The staleness threshold should be longer than the lease duration
+		// to give the controller time to act before the client times out.
+		stalenessThreshold = time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second * 2
+	} else {
+		// default if threshold not set
+		stalenessThreshold = 30 * time.Second
+	}
+
+	if time.Since(lease.Spec.RenewTime.Time) > stalenessThreshold {
+		log.Info("candidate lease is stale", "stalenessThreshold", stalenessThreshold)
 
 		// still need to return latest lease data
 		data, err := le.readLease(ctx)
