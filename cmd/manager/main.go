@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"os"
 
-	"cloud.google.com/go/storage"
+	gstorage "cloud.google.com/go/storage"
 	"github.com/gke-labs/multicluster-leader-election/controllers"
+	"github.com/gke-labs/multicluster-leader-election/pkg/storage"
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -72,7 +73,7 @@ func main() {
 	// Create GCS client
 	setupLog.Info("Creating GCS client", "bucket", gcsBucketName)
 	ctx := context.Background()
-	gcsClient, err := storage.NewClient(ctx)
+	gcsClient, err := gstorage.NewClient(ctx)
 	if err != nil {
 		setupLog.Error(err, "unable to create GCS client")
 		os.Exit(1)
@@ -88,20 +89,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create GCS Storage Factory
+	gcsStorageFactory := storage.NewGCSStorageFactory(gcsClient, gcsBucketName)
+
 	// Create and set up the MultiClusterLeaseReconciler
 	setupLog.Info("Creating MultiClusterLeaseReconciler")
 	reconciler := controllers.NewMultiClusterLeaseReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("MultiClusterLease"),
-		gcsClient,
-		gcsBucketName,
+		gcsStorageFactory,
 	)
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterLease")
 		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("Starting manager", "gcsBucket", gcsBucketName)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
