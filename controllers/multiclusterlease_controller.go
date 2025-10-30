@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/storage"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,6 +27,7 @@ import (
 
 	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
 	"github.com/gke-labs/multicluster-leader-election/pkg/leaderelection"
+	"github.com/gke-labs/multicluster-leader-election/pkg/storage"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,9 +36,8 @@ import (
 // MultiClusterLeaseReconciler reconciles a MultiClusterLease object
 type MultiClusterLeaseReconciler struct {
 	client.Client
-	Log        logr.Logger
-	GCSClient  *storage.Client
-	BucketName string
+	Log     logr.Logger
+	Storage storage.Storage
 
 	leaderElectorsMutex sync.Mutex
 	leaderElectors      map[string]*leaderelection.LeaderElector // keyed by NamespacedName
@@ -48,14 +47,12 @@ type MultiClusterLeaseReconciler struct {
 func NewMultiClusterLeaseReconciler(
 	client client.Client,
 	log logr.Logger,
-	gcsClient *storage.Client,
-	bucketName string,
+	storage storage.Storage,
 ) *MultiClusterLeaseReconciler {
 	return &MultiClusterLeaseReconciler{
 		Client:         client,
 		Log:            log,
-		GCSClient:      gcsClient,
-		BucketName:     bucketName,
+		Storage:        storage,
 		leaderElectors: make(map[string]*leaderelection.LeaderElector),
 	}
 }
@@ -111,9 +108,7 @@ func (r *MultiClusterLeaseReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Try to acquire or renew the lease in GCS
 	leaseInfo, err := leaderElector.AcquireOrRenew(ctx, &mcl, identity)
 	if err != nil {
-		log.Error(err, "failed to acquire or renew lease",
-			"candidate", identity,
-			"currentHolder", leaseInfo.HolderIdentity)
+		log.Error(err, "failed to acquire or renew lease", "candidate", identity)
 
 		// Update condition to indicate backend is unhealthy
 		r.setBackendHealthyCondition(&mcl, false, err)
@@ -133,11 +128,11 @@ func (r *MultiClusterLeaseReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if leaseInfo.Acquired {
 		log.Info("successfully acquired or renewed the lease",
 			"identity", identity,
-			"renewTime", leaseInfo.RenewTime)
+			"renewTime", leaseInfo.LastRenewTime)
 	} else {
 		log.Info("lease held by another identity",
 			"holderIdentity", leaseInfo.HolderIdentity,
-			"renewTime", leaseInfo.RenewTime)
+			"renewTime", leaseInfo.LastRenewTime)
 	}
 
 	// Update status based on lease state
@@ -191,15 +186,15 @@ func (r *MultiClusterLeaseReconciler) setMCLStatus(mcl *v1alpha1.MultiClusterLea
 	mcl.Status.ObservedGeneration = &generation
 
 	// Update holder identity
-	if leaseInfo.HolderIdentity != nil {
+	if leaseInfo != nil && leaseInfo.HolderIdentity != nil {
 		mcl.Status.GlobalHolderIdentity = leaseInfo.HolderIdentity
 	} else {
 		mcl.Status.GlobalHolderIdentity = nil
 	}
 
 	// Update renew time as a string with second precision
-	if leaseInfo.RenewTime != nil {
-		timeStr := leaseInfo.RenewTime.Format(time.RFC3339)
+	if leaseInfo != nil && leaseInfo.LastRenewTime != nil {
+		timeStr := leaseInfo.LastRenewTime.Format(time.RFC3339)
 		mcl.Status.GlobalRenewTime = &timeStr
 	} else {
 		mcl.Status.GlobalRenewTime = nil
@@ -208,11 +203,6 @@ func (r *MultiClusterLeaseReconciler) setMCLStatus(mcl *v1alpha1.MultiClusterLea
 	// Update lease duration
 	if mcl.Spec.LeaseDurationSeconds != nil {
 		mcl.Status.GlobalLeaseDurationSeconds = mcl.Spec.LeaseDurationSeconds
-	}
-
-	// Update lease transitions
-	if leaseInfo.LeaseTransitions != nil {
-		mcl.Status.GlobalLeaseTransitions = leaseInfo.LeaseTransitions
 	}
 }
 
@@ -288,7 +278,7 @@ func (r *MultiClusterLeaseReconciler) getOrCreateLeaderElector(key string) (*lea
 	}
 
 	// Create a new LeaderElector
-	le := leaderelection.NewLeaderElector(r.GCSClient, r.BucketName, key)
+	le := leaderelection.NewLeaderElector(r.Storage)
 	r.leaderElectors[key] = le
 	return le, nil
 }
