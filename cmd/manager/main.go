@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"os"
 
-	"cloud.google.com/go/storage"
+	gstorage "cloud.google.com/go/storage"
 	"github.com/gke-labs/multicluster-leader-election/controllers"
+	"github.com/gke-labs/multicluster-leader-election/pkg/storage"
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,10 +36,12 @@ var setupLog = ctrl.Log.WithName("setup")
 func main() {
 	var metricsAddr string
 	var gcsBucketName string
+	var gcsObjectName string
 	var verbose bool
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&gcsBucketName, "gcs-bucket", "", "The GCS bucket to use for multi-cluster leader election.")
+	flag.StringVar(&gcsObjectName, "gcs-object", "lease.json", "The GCS object name to use for the lease lock.")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
@@ -72,7 +75,7 @@ func main() {
 	// Create GCS client
 	setupLog.Info("Creating GCS client", "bucket", gcsBucketName)
 	ctx := context.Background()
-	gcsClient, err := storage.NewClient(ctx)
+	gcsClient, err := gstorage.NewClient(ctx)
 	if err != nil {
 		setupLog.Error(err, "unable to create GCS client")
 		os.Exit(1)
@@ -88,13 +91,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create GCS Storage Backend
+	gcsStorage := storage.NewGCSStorage(gcsClient, gcsBucketName, gcsObjectName)
+
 	// Create and set up the MultiClusterLeaseReconciler
 	setupLog.Info("Creating MultiClusterLeaseReconciler")
 	reconciler := controllers.NewMultiClusterLeaseReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("MultiClusterLease"),
-		gcsClient,
-		gcsBucketName,
+		gcsStorage,
 	)
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {
