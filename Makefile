@@ -70,22 +70,22 @@ docker-build: test
 docker-push:
 	docker push ${IMG}
 
+.PHONY: test-unit
+test-unit: setup-envtest
+	go test ./...
+
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;
-	CONTROLLER_GEN_TMP_DIR=$(mktemp -d) ;
-	cd $CONTROLLER_GEN_TMP_DIR ;
-	go mod init tmp ;
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0 ;
-	rm -rf $CONTROLLER_GEN_TMP_DIR ;
-	}
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
+
+ENVTEST_ASSETS_DIR=$(shell pwd)/bin/k8s
+.PHONY: setup-envtest
+setup-envtest:
+	mkdir -p $(ENVTEST_ASSETS_DIR)
+	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	$(GOBIN)/setup-envtest use 1.29.0 -p path --arch amd64 > $(ENVTEST_ASSETS_DIR)/envtest.path
 
 ##@ E2E Testing
 
