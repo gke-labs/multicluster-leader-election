@@ -72,7 +72,7 @@ docker-push:
 
 .PHONY: test-unit
 test-unit: setup-envtest
-	go test ./...
+	KUBEBUILDER_ASSETS="$(shell cat $(ENVTEST_ASSETS_DIR)/envtest.path)" go test ./...
 
 # find or download controller-gen
 # download controller-gen if necessary
