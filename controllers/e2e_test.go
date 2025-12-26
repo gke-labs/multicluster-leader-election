@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -148,7 +149,7 @@ func TestE2E_LeaderElection(t *testing.T) {
 	t.Logf("successfully verified lease renewal")
 }
 
-var gcsBucketName = "multiclusterlease-test"
+var gcsBucketName = os.Getenv("BUCKET_NAME")
 
 func TestE2E_LeaseHeldThenFailover(t *testing.T) {
 	testCtx, testCancel := context.WithTimeout(context.Background(), 90*time.Second)

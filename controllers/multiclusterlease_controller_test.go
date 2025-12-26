@@ -36,7 +36,6 @@ import (
 // After the fix is applied, this test will FAIL because the panic is gone.
 // We will then update the test to assert that no panic occurs.
 func TestReconcile_PanicOnGCSAuthError(t *testing.T) {
-
 	// Arrange: Set up a scenario that will cause a panic
 	ctx := context.Background()
 	log := ctrl.Log.WithName("test")
