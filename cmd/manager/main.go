@@ -21,11 +21,13 @@ import (
 	"os"
 
 	"cloud.google.com/go/storage"
+
 	"github.com/gke-labs/multicluster-leader-election/controllers"
+	"github.com/gke-labs/multicluster-leader-election/pkg/logging"
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	// +kubebuilder:scaffold:imports
 )
@@ -42,12 +44,11 @@ func main() {
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	flag.Parse()
 
-	// Configure logging
-	opts := []zap.Opts{zap.UseDevMode(true)}
+	logLevel := zapcore.InfoLevel
 	if verbose {
-		opts = append(opts, zap.Level(zapcore.DebugLevel))
+		logLevel = zapcore.DebugLevel
 	}
-	ctrl.SetLogger(zap.New(opts...))
+	ctrl.SetLogger(logging.BuildLogger(os.Stderr, logLevel))
 
 	// Validate required flags
 	if gcsBucketName == "" {
