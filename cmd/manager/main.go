@@ -16,16 +16,16 @@ package main
 
 import (
 	"context"
-	"flag"
+	goflag "flag"
 	"fmt"
 	"os"
 
 	"cloud.google.com/go/storage"
 	"github.com/gke-labs/multicluster-leader-election/controllers"
-	"go.uber.org/zap/zapcore"
+	flag "github.com/spf13/pflag"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	// +kubebuilder:scaffold:imports
 )
@@ -33,26 +33,35 @@ import (
 var setupLog = ctrl.Log.WithName("setup")
 
 func main() {
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context) error {
 	var metricsAddr string
 	var gcsBucketName string
-	var verbose bool
 
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&gcsBucketName, "gcs-bucket", "", "The GCS bucket to use for multi-cluster leader election.")
-	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging")
-	flag.Parse()
 
 	// Configure logging
-	opts := []zap.Opts{zap.UseDevMode(true)}
-	if verbose {
-		opts = append(opts, zap.Level(zapcore.DebugLevel))
-	}
-	ctrl.SetLogger(zap.New(opts...))
+	klogFlagSet := goflag.NewFlagSet("klog", goflag.ExitOnError)
+	klog.InitFlags(klogFlagSet)
+	// Support default klog verbosity `-v`
+	flag.CommandLine.AddGoFlag(klogFlagSet.Lookup("v"))
+	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+	flag.Parse()
+
+	ctx = klog.NewContext(ctx, setupLog)
+	ctrl.SetLogger(klog.NewKlogr())
 
 	// Validate required flags
 	if gcsBucketName == "" {
-		setupLog.Error(fmt.Errorf("gcs-bucket flag is required"), "missing required flag")
-		os.Exit(1)
+		err := fmt.Errorf("gcs-bucket flag is required")
+		setupLog.Error(err, "missing required flag")
+		return err
 	}
 
 	// Create manager
@@ -66,16 +75,15 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return err
 	}
 
 	// Create GCS client
 	setupLog.Info("Creating GCS client", "bucket", gcsBucketName)
-	ctx := context.Background()
 	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
 		setupLog.Error(err, "unable to create GCS client")
-		os.Exit(1)
+		return err
 	}
 	defer gcsClient.Close()
 
@@ -85,7 +93,7 @@ func main() {
 	_, err = bucket.Attrs(ctx)
 	if err != nil {
 		setupLog.Error(err, "unable to access GCS bucket", "bucket", gcsBucketName)
-		os.Exit(1)
+		return err
 	}
 
 	// Create and set up the MultiClusterLeaseReconciler
@@ -99,13 +107,14 @@ func main() {
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterLease")
-		os.Exit(1)
+		return err
 	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("Starting manager", "gcsBucket", gcsBucketName)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return err
 	}
+	return nil
 }
