@@ -50,7 +50,7 @@ func New(client client.Client, leaseName, leaseNS, identity string, retryPeriod 
 // Get returns the current leader election record from the MultiClusterLease CR.
 func (mcl *MultiClusterLeaseLock) Get(ctx context.Context) (*resourcelock.LeaderElectionRecord, []byte, error) {
 	log := klog.FromContext(ctx)
-	log.Info("getting MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName)
+	log.V(2).Info("getting MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName)
 	lease := &v1alpha1.MultiClusterLease{}
 	err := mcl.client.Get(ctx, client.ObjectKey{Namespace: mcl.leaseNS, Name: mcl.leaseName}, lease)
 	if err != nil {
@@ -58,7 +58,7 @@ func (mcl *MultiClusterLeaseLock) Get(ctx context.Context) (*resourcelock.Leader
 	}
 
 	record := mcl.leaseToRecord(lease)
-	log.Info("successfully retrieved MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName, "leader", record.HolderIdentity)
+	log.V(2).Info("successfully retrieved MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName, "leader", record.HolderIdentity)
 	recordBytes, err := json.Marshal(*record)
 	if err != nil {
 		return nil, nil, err
@@ -71,7 +71,7 @@ func (mcl *MultiClusterLeaseLock) Get(ctx context.Context) (*resourcelock.Leader
 // to confirm global leadership before returning.
 func (mcl *MultiClusterLeaseLock) Create(ctx context.Context, ler resourcelock.LeaderElectionRecord) error {
 	log := klog.FromContext(ctx)
-	log.Info("creating MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
+	log.V(2).Info("creating MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
 	// Phase 1: Asynchronous Creation
 	lease := &v1alpha1.MultiClusterLease{
 		ObjectMeta: metav1.ObjectMeta{
@@ -97,7 +97,7 @@ func (mcl *MultiClusterLeaseLock) Create(ctx context.Context, ler resourcelock.L
 	expectedGeneration := lease.Generation
 
 	// Phase 2: Synchronous Confirmation
-	log.Info("waiting for leadership confirmation after create", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expectedGeneration", expectedGeneration)
+	log.V(2).Info("waiting for leadership confirmation after create", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expectedGeneration", expectedGeneration)
 	pollCtx, cancel := context.WithTimeout(ctx, time.Duration(ler.LeaseDurationSeconds)*time.Second)
 	defer cancel()
 
@@ -108,7 +108,7 @@ func (mcl *MultiClusterLeaseLock) Create(ctx context.Context, ler resourcelock.L
 		}
 
 		status := currentLease.Status
-		log.Info("polling for leadership confirmation (create)", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expected", expectedGeneration, "observed", status.ObservedGeneration, "leader", status.GlobalHolderIdentity)
+		log.V(2).Info("polling for leadership confirmation (create)", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expected", expectedGeneration, "observed", status.ObservedGeneration, "leader", status.GlobalHolderIdentity)
 
 		// Check that the controller has observed our specific spec update (or a newer one)
 		// AND that it has confirmed our leadership.
@@ -121,7 +121,7 @@ func (mcl *MultiClusterLeaseLock) Create(ctx context.Context, ler resourcelock.L
 	if err != nil {
 		return fmt.Errorf("failed to confirm leadership in status after create: %w", err)
 	}
-	log.Info("successfully confirmed leadership after create", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
+	log.V(2).Info("successfully confirmed leadership after create", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
 	return nil // Successfully confirmed leadership.
 }
 
@@ -129,7 +129,7 @@ func (mcl *MultiClusterLeaseLock) Create(ctx context.Context, ler resourcelock.L
 // to confirm global leadership before returning.
 func (mcl *MultiClusterLeaseLock) Update(ctx context.Context, ler resourcelock.LeaderElectionRecord) error {
 	log := klog.FromContext(ctx)
-	log.Info("updating MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
+	log.V(2).Info("updating MultiClusterLease", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
 	// Phase 1: Asynchronous Heartbeat
 	lease := &v1alpha1.MultiClusterLease{}
 	if err := mcl.client.Get(ctx, client.ObjectKey{Namespace: mcl.leaseNS, Name: mcl.leaseName}, lease); err != nil {
@@ -154,7 +154,7 @@ func (mcl *MultiClusterLeaseLock) Update(ctx context.Context, ler resourcelock.L
 
 	// Phase 2: Synchronous Confirmation
 	// Poll the status to wait for the election controller to confirm global leadership.
-	log.Info("waiting for leadership confirmation after update", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expectedGeneration", expectedGeneration)
+	log.V(2).Info("waiting for leadership confirmation after update", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expectedGeneration", expectedGeneration)
 	pollCtx, cancel := context.WithTimeout(ctx, time.Duration(ler.LeaseDurationSeconds)*time.Second)
 	defer cancel()
 
@@ -165,7 +165,7 @@ func (mcl *MultiClusterLeaseLock) Update(ctx context.Context, ler resourcelock.L
 		}
 
 		status := currentLease.Status
-		log.Info("polling for leadership confirmation (update)", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expected", expectedGeneration, "observed", status.ObservedGeneration, "leader", status.GlobalHolderIdentity)
+		log.V(2).Info("polling for leadership confirmation (update)", "namespace", mcl.leaseNS, "name", mcl.leaseName, "expected", expectedGeneration, "observed", status.ObservedGeneration, "leader", status.GlobalHolderIdentity)
 
 		// Check that the controller has observed our specific spec update (or a newer one)
 		// AND that it has confirmed our leadership.
@@ -178,7 +178,7 @@ func (mcl *MultiClusterLeaseLock) Update(ctx context.Context, ler resourcelock.L
 	if err != nil {
 		return fmt.Errorf("failed to confirm leadership in status: %w", err)
 	}
-	log.Info("successfully confirmed leadership after update", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
+	log.V(2).Info("successfully confirmed leadership after update", "namespace", mcl.leaseNS, "name", mcl.leaseName, "identity", ler.HolderIdentity)
 	return nil
 }
 
