@@ -32,14 +32,14 @@ This document outlines the steps to implement the asynchronous, multi-cluster le
     -   [x] Write a Go test for the "failover path" (acquiring an expired lease).
     -   [x] Add a `Makefile` target (`test-e2e`) to orchestrate the single-cluster tests.
 
-5.  **[ ] Create a Multi-Cluster E2E Test**
-    -   [ ] Create a new test file, e.g., `controllers/e2e_multicluster_test.go`.
-    -   [ ] Write a Go test that:
+5.  **[x] Create a Multi-Cluster E2E Test**
+    -   [x] Create a new test file, e.g., `controllers/e2e_multicluster_test.go`.
+    -   [x] Write a Go test that:
         -   Connects to two separate Kubernetes clusters.
         -   Runs a `LeaderElector` client in each cluster concurrently.
         -   Asserts that only one client ever becomes the leader.
         -   Asserts that the `MultiClusterLease` CR in both clusters correctly reports the single winner.
-    -   [ ] Add a new `Makefile` target (e.g., `test-e2e-multi`) that:
+    -   [x] Add a new `Makefile` target (e.g., `test-e2e-multi`) that:
         -   Creates two `kind` clusters.
         -   Deploys the controller to both clusters.
         -   Runs the multi-cluster Go test.

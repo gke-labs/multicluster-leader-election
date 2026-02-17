@@ -62,6 +62,9 @@ func (le *LeaderElector) AcquireOrRenew(ctx context.Context, lease *v1alpha1.Mul
 	}
 
 	// TODO: Make the staleness check configurable
+	// We check if the candidate's heartbeat to its local cluster is fresh.
+	// If the candidate pod is dead or not heartbeating locally, we don't
+	// want to contend for the global lock on its behalf.
 	if time.Since(lease.Spec.RenewTime.Time) > 15*time.Second {
 		log.Info("candidate lease is stale")
 
@@ -128,53 +131,53 @@ func (le *LeaderElector) AcquireOrRenew(ctx context.Context, lease *v1alpha1.Mul
 	leaseExpired := time.Since(obj.Data.RenewTime) > leaseDuration
 	log.Info("checking lease expiration", "isExpired", leaseExpired)
 
-	if obj.Data.HolderIdentity == identity || leaseExpired {
-		// We are the holder or the lease is expired. Try to update.
-		log.Info("attempting to acquire or renew lease")
-		if obj.Data.HolderIdentity != identity && obj.Data.HolderIdentity != "" {
-			obj.Data.LeaseTransitions++
-			log.Info("incrementing lease transitions", "newTransitions", obj.Data.LeaseTransitions)
-		}
-		obj.Data.HolderIdentity = identity
-		obj.Data.RenewTime = time.Now()
-
-		updatedObj, updateErr := le.storage.UpdateLease(ctx, le.leaseKey, obj)
-		if updateErr != nil {
-			if le.storage.IsConflict(updateErr) {
-				// We lost an update race. Re-read to get the latest state.
-				log.Info("lost update race, re-reading lease")
-				obj, err = le.storage.ReadLease(ctx, le.leaseKey)
-				if err != nil {
-					log.Error(err, "failed to read lease after losing update race")
-					return nil, fmt.Errorf("failed to read lease after losing update race: %w", err)
-				}
-				return &LeaseInfo{
-					Acquired:         false,
-					HolderIdentity:   &obj.Data.HolderIdentity,
-					RenewTime:        &obj.Data.RenewTime,
-					LeaseTransitions: &obj.Data.LeaseTransitions,
-				}, nil
-			}
-			log.Error(updateErr, "failed to update lease")
-			return nil, fmt.Errorf("failed to update lease: %w", updateErr)
-		}
-
-		// Successfully updated. We are the leader.
-		log.Info("successfully acquired or renewed lease")
+	if obj.Data.HolderIdentity != identity && !leaseExpired {
+		// 4. The lease is held by someone else and is not expired.
+		log.Info("lease is held by another identity and is not expired", "holder", obj.Data.HolderIdentity)
 		return &LeaseInfo{
-			Acquired:         true,
-			HolderIdentity:   &updatedObj.Data.HolderIdentity,
-			RenewTime:        &updatedObj.Data.RenewTime,
-			LeaseTransitions: &updatedObj.Data.LeaseTransitions,
+			Acquired:         false,
+			HolderIdentity:   &obj.Data.HolderIdentity,
+			RenewTime:        &obj.Data.RenewTime,
+			LeaseTransitions: &obj.Data.LeaseTransitions,
 		}, nil
 	}
 
-	// 4. The lease is held by someone else and is not expired.
-	log.Info("lease is held by another identity and is not expired")
+	// We are the holder or the lease is expired. Try to update.
+	log.Info("attempting to acquire or renew lease")
+	if obj.Data.HolderIdentity != identity && obj.Data.HolderIdentity != "" {
+		obj.Data.LeaseTransitions++
+		log.Info("incrementing lease transitions", "newTransitions", obj.Data.LeaseTransitions)
+	}
+	obj.Data.HolderIdentity = identity
+	obj.Data.RenewTime = time.Now()
+
+	updatedObj, updateErr := le.storage.UpdateLease(ctx, le.leaseKey, obj)
+	if updateErr != nil {
+		if le.storage.IsConflict(updateErr) {
+			// We lost an update race. Re-read to get the latest state.
+			log.Info("lost update race, re-reading lease")
+			obj, err = le.storage.ReadLease(ctx, le.leaseKey)
+			if err != nil {
+				log.Error(err, "failed to read lease after losing update race")
+				return nil, fmt.Errorf("failed to read lease after losing update race: %w", err)
+			}
+			return &LeaseInfo{
+				Acquired:         false,
+				HolderIdentity:   &obj.Data.HolderIdentity,
+				RenewTime:        &obj.Data.RenewTime,
+				LeaseTransitions: &obj.Data.LeaseTransitions,
+			}, nil
+		}
+		log.Error(updateErr, "failed to update lease")
+		return nil, fmt.Errorf("failed to update lease: %w", updateErr)
+	}
+
+	// Successfully updated. We are the leader.
+	log.Info("successfully acquired or renewed lease")
 	return &LeaseInfo{
-		Acquired:         false,
-		HolderIdentity:   &obj.Data.HolderIdentity,
-		RenewTime:        &obj.Data.RenewTime,
-		LeaseTransitions: &obj.Data.LeaseTransitions,
+		Acquired:         true,
+		HolderIdentity:   &updatedObj.Data.HolderIdentity,
+		RenewTime:        &updatedObj.Data.RenewTime,
+		LeaseTransitions: &updatedObj.Data.LeaseTransitions,
 	}, nil
 }
