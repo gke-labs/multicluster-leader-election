@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/storage"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,6 +27,7 @@ import (
 
 	v1alpha1 "github.com/gke-labs/multicluster-leader-election/api/v1alpha1"
 	"github.com/gke-labs/multicluster-leader-election/pkg/leaderelection"
+	"github.com/gke-labs/multicluster-leader-election/pkg/storage"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,9 +36,8 @@ import (
 // MultiClusterLeaseReconciler reconciles a MultiClusterLease object
 type MultiClusterLeaseReconciler struct {
 	client.Client
-	Log        logr.Logger
-	GCSClient  *storage.Client
-	BucketName string
+	Log     logr.Logger
+	Storage storage.Storage
 
 	leaderElectorsMutex sync.Mutex
 	leaderElectors      map[string]*leaderelection.LeaderElector // keyed by NamespacedName
@@ -48,14 +47,12 @@ type MultiClusterLeaseReconciler struct {
 func NewMultiClusterLeaseReconciler(
 	client client.Client,
 	log logr.Logger,
-	gcsClient *storage.Client,
-	bucketName string,
+	s storage.Storage,
 ) *MultiClusterLeaseReconciler {
 	return &MultiClusterLeaseReconciler{
 		Client:         client,
 		Log:            log,
-		GCSClient:      gcsClient,
-		BucketName:     bucketName,
+		Storage:        s,
 		leaderElectors: make(map[string]*leaderelection.LeaderElector),
 	}
 }
@@ -290,7 +287,7 @@ func (r *MultiClusterLeaseReconciler) getOrCreateLeaderElector(key string) (*lea
 	}
 
 	// Create a new LeaderElector
-	le := leaderelection.NewLeaderElector(r.GCSClient, r.BucketName, key)
+	le := leaderelection.NewLeaderElector(r.Storage, key)
 	r.leaderElectors[key] = le
 	return le, nil
 }

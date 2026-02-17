@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"os"
 
-	"cloud.google.com/go/storage"
+	gcs "cloud.google.com/go/storage"
 	"github.com/gke-labs/multicluster-leader-election/controllers"
+	"github.com/gke-labs/multicluster-leader-election/pkg/storage"
 	flag "github.com/spf13/pflag"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
@@ -80,7 +81,7 @@ func run(ctx context.Context) error {
 
 	// Create GCS client
 	setupLog.Info("Creating GCS client", "bucket", gcsBucketName)
-	gcsClient, err := storage.NewClient(ctx)
+	gcsClient, err := gcs.NewClient(ctx)
 	if err != nil {
 		setupLog.Error(err, "unable to create GCS client")
 		return err
@@ -96,13 +97,16 @@ func run(ctx context.Context) error {
 		return err
 	}
 
+	// Create storage backend
+	setupLog.Info("Creating GCS storage backend", "bucket", gcsBucketName)
+	gcsStorage := storage.NewGCSStorage(gcsClient, gcsBucketName)
+
 	// Create and set up the MultiClusterLeaseReconciler
 	setupLog.Info("Creating MultiClusterLeaseReconciler")
 	reconciler := controllers.NewMultiClusterLeaseReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("MultiClusterLease"),
-		gcsClient,
-		gcsBucketName,
+		gcsStorage,
 	)
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {
