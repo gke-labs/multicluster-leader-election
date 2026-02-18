@@ -88,7 +88,7 @@ First, set up your environment variables:
 ```bash
 export PROJECT_ID=$(gcloud config get-value project)
 export SA_NAME="multiclusterlease-e2e-tester"
-export BUCKET_NAME="multiclusterlease-test-${PROJECT_ID}" # Or any other unique bucket name
+export BUCKET_NAME="multiclusterlease-test" # Bucket names must be globally unique. Choose a name that does not already exist.
 
 Now, run the following commands to create the bucket, the service account, grant permissions, and download the key.
 
@@ -117,6 +117,8 @@ export GCP_SA_KEY_PATH="$(pwd)/keyfile.json"
 Important: The keyfile.json contains sensitive credentials. Ensure it is included in your .gitignore file and is never committed to your repository.
 
 ### Step 2: Run the E2E tests
+
+Before running the tests, ensure the `--gcs-bucket` argument in `config/manager/manager.yaml` matches the actual bucket name in use.
 
 ```
 make test-e2e
