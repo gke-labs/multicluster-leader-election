@@ -32,14 +32,14 @@ This document outlines the steps to implement the asynchronous, multi-cluster le
     -   [x] Write a Go test for the "failover path" (acquiring an expired lease).
     -   [x] Add a `Makefile` target (`test-e2e`) to orchestrate the single-cluster tests.
 
-5.  **[ ] Create a Multi-Cluster E2E Test**
-    -   [ ] Create a new test file, e.g., `controllers/e2e_multicluster_test.go`.
-    -   [ ] Write a Go test that:
+5.  **[x] Create a Multi-Cluster E2E Test**
+    -   [x] Create a new test file, e.g., `controllers/e2e_multicluster_test.go`.
+    -   [x] Write a Go test that:
         -   Connects to two separate Kubernetes clusters.
         -   Runs a `LeaderElector` client in each cluster concurrently.
         -   Asserts that only one client ever becomes the leader.
         -   Asserts that the `MultiClusterLease` CR in both clusters correctly reports the single winner.
-    -   [ ] Add a new `Makefile` target (e.g., `test-e2e-multi`) that:
+    -   [x] Add a new `Makefile` target (e.g., `test-e2e-multi`) that:
         -   Creates two `kind` clusters.
         -   Deploys the controller to both clusters.
         -   Runs the multi-cluster Go test.
@@ -47,21 +47,21 @@ This document outlines the steps to implement the asynchronous, multi-cluster le
 
 ## Phase 4: Refactor for Pluggable Storage Backend
 
-6.  **[ ] Define the `Storage` Interface**
-    -   [ ] Create a new directory: `pkg/storage`.
-    -   [ ] Create a new file: `pkg/storage/interface.go`.
-    -   [ ] In the new file, define the `LeaseData`, `LeaseObject`, and `Storage` interface with methods for `ReadLease`, `UpdateLease`, `CreateLease`, and `DeleteLease`.
+6.  **[x] Define the `Storage` Interface**
+    -   [x] Create a new directory: `pkg/storage`.
+    -   [x] Create a new file: `pkg/storage/interface.go`.
+    -   [x] In the new file, define the `LeaseData`, `LeaseObject`, and `Storage` interface with methods for `ReadLease`, `UpdateLease`, `CreateLease`, and `DeleteLease`.
 
-7.  **[ ] Create the `GCSStorage` Implementation**
-    -   [ ] Create a new file: `pkg/storage/gcs.go`.
-    -   [ ] Add the `GCSStorage` struct and its methods to this file, implementing the `Storage` interface. This will contain all GCS-specific logic.
+7.  **[x] Create the `GCSStorage` Implementation**
+    -   [x] Create a new file: `pkg/storage/gcs.go`.
+    -   [x] Add the `GCSStorage` struct and its methods to this file, implementing the `Storage` interface. This will contain all GCS-specific logic.
 
-8.  **[ ] Refactor `LeaderElector` to Use the `Storage` Interface**
-    -   [ ] In `pkg/leaderelection/leaderelection.go`, modify the `LeaderElector` struct to hold a `storage.Storage` interface instead of a `*storage.Client`.
-    -   [ ] Update the `NewLeaderElector` constructor to accept a `storage.Storage` object.
-    -   [ ] Rewrite the `AcquireOrRenew` method to use the `storage.Storage` interface. This method will now contain the core Read-Modify-Write and retry logic, making it the "brains" of the operation.
-    -   [ ] Remove the low-level GCS helper methods (`readLease`, `updateLease`, etc.) from the `LeaderElector`, as that logic now lives in `GCSStorage`.
+8.  **[x] Refactor `LeaderElector` to Use the `Storage` Interface**
+    -   [x] In `pkg/leaderelection/leaderelection.go`, modify the `LeaderElector` struct to hold a `storage.Storage` interface instead of a `*storage.Client`.
+    -   [x] Update the `NewLeaderElector` constructor to accept a `storage.Storage` object.
+    -   [x] Rewrite the `AcquireOrRenew` method to use the `storage.Storage` interface. This method will now contain the core Read-Modify-Write and retry logic, making it the "brains" of the operation.
+    -   [x] Remove the low-level GCS helper methods (`readLease`, `updateLease`, etc.) from the `LeaderElector`, as that logic now lives in `GCSStorage`.
 
-9.  **[ ] Wire Up the New Components**
-    -   [ ] In `cmd/manager/main.go`, create an instance of `storage.GCSStorage`.
-    -   [ ] In `controllers/multiclusterlease_controller.go`, update the `NewLeaderElector` constructor call to pass in the newly created `GCSStorage` instance.
+9.  **[x] Wire Up the New Components**
+    -   [x] In `cmd/manager/main.go`, create an instance of `storage.GCSStorage`.
+    -   [x] In `controllers/multiclusterlease_controller.go`, update the `NewLeaderElector` constructor call to pass in the newly created `GCSStorage` instance.

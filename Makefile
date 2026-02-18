@@ -18,6 +18,10 @@ all: manager
 test: generate lint manifests
 	go test ./... -coverprofile cover.out
 
+.PHONY: test-unit
+test-unit: setup-envtest
+	KUBEBUILDER_ASSETS="$(shell cat $(ENVTEST_ASSETS_DIR)/envtest.path)" go test ./...
+
 # Build manager binary
 manager: generate lint
 	go build -o bin/manager cmd/manager/main.go
@@ -73,19 +77,16 @@ docker-push:
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.2
 CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
+
+ENVTEST_ASSETS_DIR=$(shell pwd)/bin/k8s
+.PHONY: setup-envtest
+setup-envtest:
+	mkdir -p $(ENVTEST_ASSETS_DIR)
+	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.17.2
+	$(GOBIN)/setup-envtest use 1.29.x --bin-dir $(ENVTEST_ASSETS_DIR) --print path > $(ENVTEST_ASSETS_DIR)/envtest.path
+
 ##@ E2E Testing
 
 # Kind cluster names
