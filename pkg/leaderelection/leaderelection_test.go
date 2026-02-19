@@ -85,6 +85,80 @@ func TestAcquireOrRenew(t *testing.T) {
 	require.Equal(t, int32(2), *info.LeaseTransitions)
 }
 
+func TestAcquireOrRenew_StalenessThreshold(t *testing.T) {
+	ctx := context.Background()
+	s := storage.NewFakeStorage()
+	leaseKey := "test-lease"
+	le := NewLeaderElector(s, leaseKey)
+
+	identity := "pod-1"
+
+	t.Run("dynamic threshold respects LeaseDuration", func(t *testing.T) {
+		// Set a large LeaseDurationSeconds
+		leaseDuration := int32(60)
+		// Set RenewTime to 20 seconds ago (greater than 15s, but less than leaseDuration*2 = 120s)
+		renewTime := time.Now().Add(-20 * time.Second)
+
+		mcl := &v1alpha1.MultiClusterLease{
+			Spec: v1alpha1.MultiClusterLeaseSpec{
+				HolderIdentity:       &identity,
+				RenewTime:            &metav1.MicroTime{Time: renewTime},
+				LeaseDurationSeconds: &leaseDuration,
+			},
+		}
+
+		// Seed the storage so ReadLease doesn't fail
+		_, err := s.CreateLease(ctx, leaseKey, storage.LeaseData{
+			HolderIdentity: "someone-else",
+			RenewTime:      time.Now(),
+		})
+		require.NoError(t, err)
+
+		info, err := le.AcquireOrRenew(ctx, mcl, identity)
+
+		// Now this should SUCCEED because 20s < 120s
+		require.NoError(t, err)
+		require.False(t, info.Acquired) // False because it's held by "someone-else" and not expired
+	})
+
+	t.Run("default threshold is 15s when LeaseDuration is nil", func(t *testing.T) {
+		// Set RenewTime to 10 seconds ago (less than default 15s)
+		renewTime := time.Now().Add(-10 * time.Second)
+
+		mcl := &v1alpha1.MultiClusterLease{
+			Spec: v1alpha1.MultiClusterLeaseSpec{
+				HolderIdentity: &identity,
+				RenewTime:      &metav1.MicroTime{Time: renewTime},
+				// LeaseDurationSeconds is nil
+			},
+		}
+
+		// Seed the storage
+		leaseKeyDefault := "test-lease-default"
+		_, err := s.CreateLease(ctx, leaseKeyDefault, storage.LeaseData{
+			HolderIdentity: "someone-else",
+			RenewTime:      time.Now(),
+		})
+		require.NoError(t, err)
+
+		leDefault := NewLeaderElector(s, leaseKeyDefault)
+		info, err := leDefault.AcquireOrRenew(ctx, mcl, identity)
+
+		// Should succeed because 10s < 15s
+		require.NoError(t, err)
+		require.False(t, info.Acquired)
+
+		// Now set RenewTime to 20 seconds ago (greater than default 15s)
+		mcl.Spec.RenewTime = &metav1.MicroTime{Time: time.Now().Add(-20 * time.Second)}
+		info, err = leDefault.AcquireOrRenew(ctx, mcl, identity)
+
+		// Should fail because 20s > 15s
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "candidate lease is stale")
+		require.False(t, info.Acquired)
+	})
+}
+
 func int32Ptr(i int32) *int32 {
 	return &i
 }

@@ -61,12 +61,16 @@ func (le *LeaderElector) AcquireOrRenew(ctx context.Context, lease *v1alpha1.Mul
 		return &LeaseInfo{Acquired: false}, fmt.Errorf("candidate has no renew time")
 	}
 
-	// TODO: Make the staleness check configurable
 	// We check if the candidate's heartbeat to its local cluster is fresh.
 	// If the candidate pod is dead or not heartbeating locally, we don't
 	// want to contend for the global lock on its behalf.
-	if time.Since(lease.Spec.RenewTime.Time) > 15*time.Second {
-		log.Info("candidate lease is stale")
+	stalenessThreshold := 15 * time.Second
+	if lease.Spec.LeaseDurationSeconds != nil {
+		stalenessThreshold = time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second * 2
+	}
+
+	if time.Since(lease.Spec.RenewTime.Time) > stalenessThreshold {
+		log.Info("candidate lease is stale", "threshold", stalenessThreshold)
 
 		// still need to return latest lease data
 		obj, err := le.storage.ReadLease(ctx, le.leaseKey)
@@ -127,7 +131,10 @@ func (le *LeaderElector) AcquireOrRenew(ctx context.Context, lease *v1alpha1.Mul
 
 	// 3. The lease exists. Check if we can acquire it.
 	log.Info("successfully read lease from storage", "holder", obj.Data.HolderIdentity, "renewTime", obj.Data.RenewTime, "resourceVersion", obj.ResourceVersion)
-	leaseDuration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
+	leaseDuration := 15 * time.Second
+	if lease.Spec.LeaseDurationSeconds != nil {
+		leaseDuration = time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
+	}
 	leaseExpired := time.Since(obj.Data.RenewTime) > leaseDuration
 	log.Info("checking lease expiration", "isExpired", leaseExpired)
 
